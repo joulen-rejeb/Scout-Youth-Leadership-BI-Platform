@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+.vscode/
+coverage/
+*.log
+*.tmp
+.DS_Store
