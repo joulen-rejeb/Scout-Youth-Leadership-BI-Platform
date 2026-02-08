@@ -1,0 +1,524 @@
+{
+  "name": "Messages personnalisés par âge et saison",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 * *"
+            }
+          ]
+        }
+      },
+      "name": "Cron — 1er du mois 09h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        480
+      ],
+      "id": "96f2cb32-5ac9-4844-aa0b-1824e608f333",
+      "notes": "Déclenche l'envoi mensuel personnalisé à tous les adhérents actifs."
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Wb99hswi956LBdX9kBajWnHQw1I6ZAeTA8yYDAkxMWc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Adhérents",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Sheets — Lecture adhérents actifs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1344,
+        480
+      ],
+      "id": "c61c22a1-0b4d-4877-8a4f-1f655d6444b9",
+      "notes": "Onglet 'Adhérents' — colonnes : prenom, nom, email_parent, date_naissance (yyyy-MM-dd), unite, lieu, statut (actif/inactif)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =============================================\n// SEGMENTATION : Tranche d'âge + Saison + Lieu\n// Indicateurs arbre 2.2 :\n//   Ind.1 : Nb parcours / groupe d'âge\n//   Ind.2 : Taux d'inscription par tranche\n// =============================================\n\nconst adherents = $input.all().map(i => i.json);\n\n// --- Détection saison selon le mois actuel ---\nconst mois = new Date().getMonth() + 1; // 1-12\nlet saison, saisonLabel, emoji;\nif ([12, 1, 2].includes(mois)) {\n  saison = 'hiver'; saisonLabel = 'Hiver'; emoji = '❄️';\n} else if ([3, 4, 5].includes(mois)) {\n  saison = 'printemps'; saisonLabel = 'Printemps'; emoji = '🌸';\n} else if ([6, 7, 8].includes(mois)) {\n  saison = 'ete'; saisonLabel = 'Été'; emoji = '☀️';\n} else {\n  saison = 'automne'; saisonLabel = 'Automne'; emoji = '🍂';\n}\n\n// --- Calcul de l'âge et tranche ---\nfunction calculerAge(dateNaissance) {\n  const naissance = new Date(dateNaissance);\n  const aujourd = new Date();\n  let age = aujourd.getFullYear() - naissance.getFullYear();\n  const m = aujourd.getMonth() - naissance.getMonth();\n  if (m < 0 || (m === 0 && aujourd.getDate() < naissance.getDate())) age--;\n  return age;\n}\n\nfunction trancheAge(age) {\n  if (age >= 6 && age <= 11) return { tranche: 'louveteaux', label: 'Louveteaux / Farfadets', min: 6, max: 11 };\n  if (age >= 12 && age <= 16) return { tranche: 'scouts', label: 'Scouts / Guides', min: 12, max: 16 };\n  if (age >= 17 && age <= 21) return { tranche: 'routiers', label: 'Routiers / Pionnières', min: 17, max: 21 };\n  return { tranche: 'autre', label: 'Membres', min: 0, max: 99 };\n}\n\n// --- Contenus thématiques par saison ---\nconst themesSaison = {\n  hiver: {\n    louveteaux: {\n      activites: ['jeux dans la neige', 'bricolage de Noël', 'chasse au trésor intérieure'],\n      conseil: 'Pense à préparer des vêtements chauds pour les sorties !',\n      actu: 'Le camp d\\'hiver approche — inscris-toi avant le 15 !'\n    },\n    scouts: {\n      activites: ['bivouac hivernal', 'navigation nocturne', 'survie en milieu froid'],\n      conseil: 'Parfait pour travailler les techniques de survie hivernale.',\n      actu: 'Préparation camp de janvier — réunion de planification ce mois.'\n    },\n    routiers: {\n      activites: ['projet solidarité hiver', 'formation premiers secours', 'chantier communauté'],\n      conseil: 'Une belle saison pour les projets de service à la communauté.',\n      actu: 'Ateliers de formation disponibles — inscris-toi en ligne.'\n    }\n  },\n  printemps: {\n    louveteaux: {\n      activites: ['observation nature', 'plantation jardin scout', 'jeux de piste en forêt'],\n      conseil: 'La nature se réveille — prépare ta loupe et ton carnet !',\n      actu: 'Sortie nature prévue — confirmation de présence requise.'\n    },\n    scouts: {\n      activites: ['randonnée longue distance', 'orientation en forêt', 'camp de Pâques'],\n      conseil: 'Saison idéale pour les grandes randonnées — entraîne-toi !',\n      actu: 'Camp de Pâques — inscriptions ouvertes jusqu\\'au 20.'\n    },\n    routiers: {\n      activites: ['projet ODD environnement', 'nettoyage rivière', 'camp service'],\n      conseil: 'Idéal pour lancer tes projets à impact environnemental.',\n      actu: 'Journée mondiale scoutisme — organisation en cours, rejoins le groupe.'\n    }\n  },\n  ete: {\n    louveteaux: {\n      activites: ['camp d\\'été', 'baignade et water games', 'veillée contes'],\n      conseil: 'N\\'oublie pas la crème solaire et la gourde pour le camp !',\n      actu: 'Camp d\\'été confirmé — liste de matériel envoyée aux parents.'\n    },\n    scouts: {\n      activites: ['camp itinérant', 'kayak / escalade', 'nuit d\\'autonomie'],\n      conseil: 'La grande aventure de l\\'année — donne le meilleur de toi !',\n      actu: 'Camp été — départ le 5 juillet, retour le 20. Prépare ton sac !'\n    },\n    routiers: {\n      activites: ['voyage de clan', 'Jamboree', 'projet international'],\n      conseil: 'L\\'été routier, c\\'est l\\'exploration à grande échelle.',\n      actu: 'Candidatures Jamboree — date limite ce mois.'\n    }\n  },\n  automne: {\n    louveteaux: {\n      activites: ['récolte et cuisine', 'rallye automne', 'fabrication cabane'],\n      conseil: 'Super saison pour les activités manuelles en plein air !',\n      actu: 'Rentrée scoute — accueil des nouveaux louveteaux ce mois !'\n    },\n    scouts: {\n      activites: ['camp de rentrée', 'préparation projet annuel', 'course d\\'orientation'],\n      conseil: 'Moment clé pour planifier les grandes aventures de l\\'année.',\n      actu: 'Conseil de troupe — programme annuel à construire ensemble.'\n    },\n    routiers: {\n      activites: ['AG clan', 'définition projets annuels', 'recrutement nouveaux membres'],\n      conseil: 'C\\'est la saison pour poser les bases de tes projets.',\n      actu: 'AG de rentrée routiers — présence obligatoire, ordre du jour ci-joint.'\n    }\n  }\n};\n\n// --- Application à chaque adhérent ---\nreturn adherents.map(adherent => {\n  const age = calculerAge(adherent.date_naissance);\n  const { tranche, label } = trancheAge(age);\n  const contenu = themesSaison[saison]?.[tranche] || themesSaison[saison]?.scouts;\n\n  return {\n    json: {\n      ...adherent,\n      age,\n      tranche_age: tranche,\n      tranche_label: label,\n      saison,\n      saison_label: saisonLabel,\n      saison_emoji: emoji,\n      activites_proposees: contenu.activites,\n      conseil_saison: contenu.conseil,\n      actu_groupe: contenu.actu,\n      mois_envoi: new Date().toISOString().slice(0, 7)\n    }\n  };\n});\n"
+      },
+      "name": "Function — Segmentation âge + saison",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1072,
+        464
+      ],
+      "id": "18ae6633-24f6-44e3-9b18-e7109f1e09bb",
+      "notes": "Calcule l'âge, assigne la tranche (louveteaux 6-11 / scouts 12-16 / routiers 17-21) et la saison courante. Injecte les contenus thématiques correspondants."
+    },
+    {
+      "parameters": {
+        "batchSize": 5,
+        "options": {}
+      },
+      "name": "Split in Batches — 1 par adhérent",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -848,
+        480
+      ],
+      "id": "45e3c54e-aef3-4d12-b950-0ebbe699a0f1"
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $json.tranche_age === 'louveteaux' ? 0 : $json.tranche_age === 'scouts' ? 1 : 2 }}\n"
+      },
+      "name": "Switch — Routage par tranche d'âge",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -592,
+        320
+      ],
+      "id": "706b95c6-7fe8-4017-b0b5-9fef8291439c"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Template Louveteaux (6-11 ans) — ton ludique et coloré\n\nconst d = $json; // ✅ plus simple que $input.first()\n\n// Sécuriser activites_proposees (au cas où undefined)\nconst activites = (d.activites_proposees || [])\n  .map(a => `<li style='margin:4px 0;'>🐺 ${a}</li>`)\n  .join('');\n\n// Sujet email\nconst sujet = `${d.saison_emoji || ''} Bonjour ${d.prenom} ! Les aventures ${d.saison_label} arrivent !`;\n\n// Corps email\nconst corps = `\n<div style='font-family:Arial,sans-serif;max-width:580px;'>\n  \n  <div style='background:#fff3cd;border-radius:12px;padding:20px;text-align:center;margin-bottom:16px;'>\n    <div style='font-size:40px;'>${d.saison_emoji || ''}</div>\n    <h2 style='color:#856404;margin:8px 0;'>Salut ${d.prenom} le Louveteau !</h2>\n    <p style='color:#856404;margin:0;'>Saison ${d.saison_label} — Meute <strong>${d.unite}</strong></p>\n  </div>\n  \n  <p style='font-size:15px;'>Ce mois-ci, voici ce qui t'attend :</p>\n  <ul style='font-size:14px;line-height:1.8;'>${activites}</ul>\n  \n  <div style='background:#d4edda;border-radius:8px;padding:12px;margin:16px 0;'>\n    <strong>Le conseil de la meute :</strong><br>${d.conseil_saison || ''}\n  </div>\n  \n  <div style='background:#cce5ff;border-radius:8px;padding:12px;'>\n    <strong>Actu du groupe :</strong><br>${d.actu_groupe || ''}\n  </div>\n  \n  <p style='font-size:12px;color:#888;margin-top:20px;'>\n    Message envoyé à ${d.email_parent} — Groupe Scout | ${d.lieu}\n  </p>\n\n</div>`;\n\n// Output\nreturn [{\n  json: {\n    ...d,\n    sujet_email: sujet,\n    corps_email: corps\n  }\n}];\n"
+      },
+      "name": "Function — Template Louveteaux",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "aa4183a9-1acb-4e74-be85-19466aa55e91"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Template Scouts / Guides (12-16 ans) — ton aventure et défi\nconst d = $input.first().json;\nconst activites = (d.activites_proposees || []).map(a => `<li style='margin:6px 0;'>⚜️ ${a}</li>`).join('');\n\nconst sujet = `${d.saison_emoji || ''} ${d.saison_label || 'Ce mois'} scout — Tes défis du mois, ${d.prenom} !`;\n\nconst corps = `\n<div style='font-family:Arial,sans-serif;max-width:580px;'>\n  <div style='background:#d1ecf1;border-radius:12px;padding:20px;margin-bottom:16px;'>\n    <h2 style='color:#0c5460;margin:0 0 4px;'>${d.saison_emoji || ''} ${d.saison_label || ''} — Troupe ${d.unite}</h2>\n    <p style='color:#0c5460;margin:0;font-size:14px;'>Bonjour <strong>${d.prenom}</strong> — ${d.age} ans — ${d.lieu || ''}</p>\n  </div>\n\n  <p><strong>Ce mois-ci dans ta troupe :</strong></p>\n  <ul style='font-size:14px;line-height:1.9;'>${activites}</ul>\n\n  <div style='border-left:4px solid #17a2b8;padding:10px 16px;margin:16px 0;background:#f8f9fa;border-radius:0 8px 8px 0;'>\n    <strong>Conseil de saison :</strong><br>\n    <em>${d.conseil_saison || ''}</em>\n  </div>\n\n  <div style='background:#fff3cd;border-radius:8px;padding:12px;'>\n    <strong>📢 Actu du groupe :</strong><br>${d.actu_groupe || ''}\n  </div>\n\n  <p style='font-size:12px;color:#888;margin-top:20px;'>Groupe Scout — ${d.lieu || ''} | Contact : ${d.email_parent}</p>\n</div>`;\n\nreturn [{ json: { ...d, sujet_email: sujet, corps_email: corps } }];"
+      },
+      "name": "Function — Template Scouts/Guides",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        288
+      ],
+      "id": "106f0866-8644-4343-a804-6dc8964839e7",
+      "notes": "Corrigé : activites_proposees sécurisé avec || [], saison_emoji et lieu protégés contre undefined."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Template Routiers / Pionnières (17-21 ans) — ton projet et engagement\nconst d = $input.first().json;\nconst activites = (d.activites_proposees || []).map(a => `<li style='margin:6px 0;'>${a}</li>`).join('');\n\nconst sujet = `${d.saison_emoji || ''} ${d.saison_label || 'Ce mois'} — Programme de ton clan, ${d.prenom}`;\n\nconst corps = `\n<div style='font-family:Arial,sans-serif;max-width:580px;'>\n  <div style='background:#d4edda;border-radius:12px;padding:20px;margin-bottom:16px;'>\n    <h2 style='color:#155724;margin:0 0 4px;'>Bonjour ${d.prenom},</h2>\n    <p style='color:#155724;margin:0;font-size:14px;'>Clan ${d.unite} — ${d.saison_label || ''} — ${d.age} ans — ${d.lieu || ''}</p>\n  </div>\n\n  <p style='font-size:15px;'>Au programme ce mois pour ton clan :</p>\n  <ul style='font-size:14px;line-height:1.9;color:#333;'>${activites}</ul>\n\n  <div style='background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;padding:14px;margin:16px 0;'>\n    <strong>Perspective de saison :</strong><br>\n    ${d.conseil_saison || ''}\n  </div>\n\n  <div style='background:#e2e3e5;border-radius:8px;padding:12px;'>\n    <strong>Information clan :</strong><br>${d.actu_groupe || ''}\n  </div>\n\n  <p style='font-size:12px;color:#888;margin-top:20px;'>Groupe Scout — ${d.lieu || ''} | Répondre à cet email pour toute question.</p>\n</div>`;\n\nreturn [{ json: { ...d, sujet_email: sujet, corps_email: corps } }];"
+      },
+      "name": "Function — Template Routiers",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        400
+      ],
+      "id": "1bc1383e-6ffe-4b5c-98e0-2a7d97434969",
+      "notes": "Corrigé : activites_proposees sécurisé avec || [], toutes les variables protégées contre undefined."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$json.email_parent}}",
+        "subject": "={{$json.sujet_email}}",
+        "message": "={{$json.corps_email}}",
+        "options": {
+          "replyTo": "=amiriyacine27@gmail.com"
+        }
+      },
+      "name": "Gmail — Envoi personnalisé",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        576,
+        176
+      ],
+      "id": "f985bad2-f7c4-4110-94e5-58ff41025555",
+      "webhookId": "c0e392ad-4503-4124-aacf-dd99d1fdd815"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Wb99hswi956LBdX9kBajWnHQw1I6ZAeTA8yYDAkxMWc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Suivi_messages",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mois": "={{$json.mois_envoi}}",
+            "prenom": "={{$json.prenom}}",
+            "age": "={{$json.age}}",
+            "tranche_age": "={{$json.tranche_age}}",
+            "unite": "={{$json.unite}}",
+            "lieu": "={{$json.lieu}}",
+            "saison": "={{$json.saison_label}}",
+            "email_parent": "={{$json.email_parent}}",
+            "sujet": "={{$json.sujet_email}}",
+            "envoye_le": "={{new Date().toISOString()}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "mois",
+              "displayName": "mois",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prenom",
+              "displayName": "prenom",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "age",
+              "displayName": "age",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tranche_age",
+              "displayName": "tranche_age",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unite",
+              "displayName": "unite",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lieu",
+              "displayName": "lieu",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "saison",
+              "displayName": "saison",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email_parent",
+              "displayName": "email_parent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sujet",
+              "displayName": "sujet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "envoye_le",
+              "displayName": "envoye_le",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Sheets — Suivi envois par tranche",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        912,
+        528
+      ],
+      "id": "05821d57-bbc4-44ac-98bb-68a69fcf4d06",
+      "notes": "Alimente l'Ind.1 (nb parcours par groupe d'âge) et l'Ind.2 (taux d'inscription par tranche d'âge)."
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 1 */3 *"
+            }
+          ]
+        }
+      },
+      "name": "Cron — Rapport trimestriel",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        880
+      ],
+      "id": "01b2ba67-cfee-4362-8c4d-945f96a922d9"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Wb99hswi956LBdX9kBajWnHQw1I6ZAeTA8yYDAkxMWc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Suivi_messages",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "name": "Sheets — Lire suivi complet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -848,
+        848
+      ],
+      "id": "287270cf-6b53-4940-a980-2715856e251b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rapport trimestriel Ind.1 et Ind.2\nconst rows = $input.all().map(i => i.json);\nif (!rows.length) return [{ json: { html: '<p>Aucune donnée disponible.</p>' } }];\n\nconst tranches = ['louveteaux', 'scouts', 'routiers'];\nconst labels = { louveteaux: 'Louveteaux (6-11 ans)', scouts: 'Scouts/Guides (12-16 ans)', routiers: 'Routiers (17-21 ans)' };\n\n// Comptage par tranche\nconst stats = {};\ntranches.forEach(t => {\n  const group = rows.filter(r => r.tranche_age === t);\n  const uniques = [...new Set(group.map(r => r.prenom + r.email_parent))];\n  stats[t] = {\n    total_envois: group.length,\n    adherents_uniques: uniques.length,\n    mois_actifs: [...new Set(group.map(r => r.mois))].length,\n    saisons: [...new Set(group.map(r => r.saison))].join(', ')\n  };\n});\n\n// Tableau HTML\nconst lignes = tranches.map(t => {\n  const s = stats[t];\n  return `<tr>\n    <td style='padding:8px'>${labels[t]}</td>\n    <td style='padding:8px;text-align:center'><strong>${s.adherents_uniques}</strong></td>\n    <td style='padding:8px;text-align:center'>${s.total_envois}</td>\n    <td style='padding:8px;text-align:center'>${s.mois_actifs}</td>\n    <td style='padding:8px;text-align:center'>${s.saisons}</td>\n  </tr>`;\n}).join('');\n\nconst total = rows.length;\nconst periode = rows[0]?.mois || 'trimestre';\n\nconst html = `\n<h2 style='color:#2c5f2e;'>Rapport trimestriel — Communication personnalisée</h2>\n<p><strong>Ind.1 — Parcours par groupe d'âge :</strong></p>\n<table border='1' cellpadding='0' cellspacing='0' style='border-collapse:collapse;width:100%;font-size:13px;'>\n  <thead>\n    <tr style='background:#2c5f2e;color:white;'>\n      <th style='padding:8px'>Tranche d'âge</th>\n      <th style='padding:8px'>Adhérents uniques</th>\n      <th style='padding:8px'>Envois total</th>\n      <th style='padding:8px'>Mois actifs</th>\n      <th style='padding:8px'>Saisons couvertes</th>\n    </tr>\n  </thead>\n  <tbody>${lignes}</tbody>\n</table>\n<p style='margin-top:16px;'><strong>Ind.2 — Total envois ce trimestre :</strong> ${total} messages personnalisés.</p>\n<p style='font-size:12px;color:#666;'>Données issues de l'onglet Suivi_messages — Google Sheets.</p>\n`;\n\nreturn [{ json: { html, total, periode } }];"
+      },
+      "name": "Function — Rapport Ind.1 + Ind.2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        864
+      ],
+      "id": "0390b0d8-4127-44eb-b6df-d7fc66507db7"
+    },
+    {
+      "parameters": {
+        "sendTo": "=slamaroua10@gmail.com",
+        "subject": "= Rapport communication personnalisée ",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "name": "Gmail — Rapport trimestriel",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        864
+      ],
+      "id": "bb6b327a-befd-4183-ac32-33efbd80a44c",
+      "webhookId": "12ff0857-ec86-4e36-9d2e-783fc684eec3"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron — 1er du mois 09h00": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Lecture adhérents actifs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets — Lecture adhérents actifs": {
+      "main": [
+        [
+          {
+            "node": "Function — Segmentation âge + saison",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Segmentation âge + saison": {
+      "main": [
+        [
+          {
+            "node": "Split in Batches — 1 par adhérent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split in Batches — 1 par adhérent": {
+      "main": [
+        [
+          {
+            "node": "Switch — Routage par tranche d'âge",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch — Routage par tranche d'âge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch — Routage par tranche d'âge": {
+      "main": [
+        [
+          {
+            "node": "Function — Template Louveteaux",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Function — Template Scouts/Guides",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Function — Template Routiers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Template Louveteaux": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Envoi personnalisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Template Scouts/Guides": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Envoi personnalisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Template Routiers": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Envoi personnalisé",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Envoi personnalisé": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Suivi envois par tranche",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron — Rapport trimestriel": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Lire suivi complet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets — Lire suivi complet": {
+      "main": [
+        [
+          {
+            "node": "Function — Rapport Ind.1 + Ind.2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Rapport Ind.1 + Ind.2": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Rapport trimestriel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b234260b-ddc6-40eb-92ec-08879516b234",
+  "meta": {
+    "instanceId": "15dfa0bf5ad07176fa4d27aa9de6512c4d8b2a2c60e0f1eeb8bce41e1eaf8e34"
+  },
+  "id": "1jsJMSgkIucZMRRk",
+  "tags": []
+}

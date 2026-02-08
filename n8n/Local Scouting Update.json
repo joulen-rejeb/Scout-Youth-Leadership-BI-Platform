@@ -1,0 +1,288 @@
+{
+  "name": "Local Scouting Update",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -688,
+        96
+      ],
+      "id": "322a5124-2d1d-4fb9-9705-494dc2fab790",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) AS total_records \nFROM dbo.Membres_par_UnitéetSaison",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        -448,
+        96
+      ],
+      "id": "03003da6-bd44-4709-b27b-4f916f1f3845",
+      "name": "Read SA"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "daabef4a-fe55-4787-8d6e-ae85e5d79c1b",
+              "leftValue": "={{ $json.total_records }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "75abebd0-4353-46a1-8592-364404c1dec0",
+      "name": "If(Validation)"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/run-obj1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4e54ee22-ea12-4c68-9a6e-8f6ba848b0f1",
+      "name": "                             HTTP Request OBJ1 - Track Members"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/run-obj2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "471f5bba-f184-4c8c-a202-de77cd2ec81f",
+      "name": "                             HTTP Request OBJ2 - Communication"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/run-obj3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d811ea42-2bcf-483a-a6d0-5092aedf4cf7",
+      "name": "                             HTTP Request OBJ3 - Budget"
+    },
+    {
+      "parameters": {
+        "fromEmail": "joulenrejb@gmail.com",
+        "toEmail": "joulenrejb@gmail.com, joulen.rejeb@esprit.tn",
+        "subject": "Pipeline Scouts - Succès",
+        "html": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;\">\n  \n  <!-- HEADER -->\n  <div style=\"background-color: #1a5276; padding: 25px; text-align: center;\">\n    <h1 style=\"color: white; margin: 0;\">🏕️ Scout Group</h1>\n    <p style=\"color: #aed6f1; margin: 5px 0;\">Automated ML Pipeline Report</p>\n  </div>\n\n  <!-- BODY -->\n  <div style=\"padding: 30px; background-color: #f9f9f9;\">\n    <p style=\"font-size: 16px;\">Dear Team,</p>\n    <p>The automated ML pipeline has been executed <b>successfully</b> on <b>{{ new Date().toLocaleString('fr-FR') }}</b>.</p>\n\n    <h3 style=\"color: #1a5276; border-bottom: 2px solid #1a5276; padding-bottom: 5px;\">📊 Pipeline Results</h3>\n\n    <table style=\"width:100%; border-collapse: collapse; margin-top: 10px;\">\n      <tr style=\"background-color: #1a5276; color: white;\">\n        <th style=\"padding: 10px; text-align: left;\">Objective</th>\n        <th style=\"padding: 10px; text-align: left;\">ML Model</th>\n        <th style=\"padding: 10px; text-align: center;\">Status</th>\n      </tr>\n      <tr style=\"background-color: #eaf4fb;\">\n        <td style=\"padding: 10px;\">OBJ 1 — Track Members</td>\n        <td style=\"padding: 10px;\">ARIMA + Logistic Regression</td>\n        <td style=\"padding: 10px; text-align: center; color: green;\"><b>✅ Success</b></td>\n      </tr>\n      <tr>\n        <td style=\"padding: 10px;\">OBJ 2 — Strengthen Communication</td>\n        <td style=\"padding: 10px;\">KMeans Clustering</td>\n        <td style=\"padding: 10px; text-align: center; color: green;\"><b>✅ Success</b></td>\n      </tr>\n      <tr style=\"background-color: #eaf4fb;\">\n        <td style=\"padding: 10px;\">OBJ 3 — Optimize Budget</td>\n        <td style=\"padding: 10px;\">RandomForest Regressor</td>\n        <td style=\"padding: 10px; text-align: center; color: green;\"><b>✅ Success</b></td>\n      </tr>\n      <tr>\n        <td style=\"padding: 10px;\">🔄 Retraining</td>\n        <td style=\"padding: 10px;\">Logistic Regression (updated)</td>\n        <td style=\"padding: 10px; text-align: center; color: green;\"><b>✅ Success</b></td>\n      </tr>\n    </table>\n\n    <br>\n    <p style=\"color: #555;\">All models executed without errors. Data extracted from <b>SCOUTS_DW</b> successfully.</p>\n  </div>\n\n  <!-- FOOTER -->\n  <div style=\"background-color: #1a5276; padding: 15px; text-align: center;\">\n    <p style=\"color: #aed6f1; margin: 0; font-size: 12px;\">This email was sent automatically by n8n | Scout Group Pipeline</p>\n  </div>\n\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        896,
+        128
+      ],
+      "id": "f9847b70-3ecd-4bb4-8f05-7625034bbcb4",
+      "name": "Gmail Succès",
+      "webhookId": "16db163e-9963-4125-a735-39337d3e4b1b"
+    },
+    {
+      "parameters": {
+        "fromEmail": "joulenrejb@gmail.com",
+        "toEmail": "joulenrejb@gmail.com, joulen.rejeb@esprit.tn",
+        "subject": "⚠️ Pipeline Scouts - Erreur SA",
+        "html": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 30px; border: 1px solid #e74c3c; border-radius: 8px;\">\n  \n  <h2 style=\"color: #e74c3c;\">❌ Pipeline Scouts — Erreur SA</h2>\n  \n  <p>Bonjour,</p>\n  <p>Le pipeline automatisé a rencontré une erreur le <b>{{ $now.format('dd/MM/yyyy HH:mm') }}</b>.</p>\n  \n  <p><b>Cause :</b> La base de données <b>SCOUT_SA</b> est vide ou inaccessible.</p>\n  <p><b>Action requise :</b> Vérifier la connexion à SCOUT_SA et relancer le pipeline.</p>\n\n  <hr>\n  <p style=\"color: #aaa; font-size: 12px;\">Email automatique — n8n | Scout Group Pipeline</p>\n\n</div>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "92b5bde1-9bc2-44fa-8627-dca2bc79a7d0",
+      "name": "Gmail Erreur SA",
+      "webhookId": "a5544756-1ccd-44c4-b9c6-a5c89b8aff7a"
+    },
+    {
+      "parameters": {
+        "path": "/trigger-pipeline",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -704,
+        272
+      ],
+      "id": "2e143b96-5d64-4a09-98d0-34cd245c320f",
+      "name": "Webhook",
+      "webhookId": "6e4c74d4-e5d5-46f1-85a0-6c8cc33546aa"
+    },
+    {
+      "parameters": {
+        "url": "http://127.0.0.1:5000/retrain",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        128
+      ],
+      "id": "e8e73018-5a49-4057-b506-0da2e342523c",
+      "name": "HTTP Request retrain"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read SA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read SA": {
+      "main": [
+        [
+          {
+            "node": "If(Validation)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If(Validation)": {
+      "main": [
+        [
+          {
+            "node": "                             HTTP Request OBJ1 - Track Members",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gmail Erreur SA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "                             HTTP Request OBJ1 - Track Members": {
+      "main": [
+        [
+          {
+            "node": "                             HTTP Request OBJ2 - Communication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "                             HTTP Request OBJ2 - Communication": {
+      "main": [
+        [
+          {
+            "node": "                             HTTP Request OBJ3 - Budget",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "                             HTTP Request OBJ3 - Budget": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request retrain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Read SA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request retrain": {
+      "main": [
+        [
+          {
+            "node": "Gmail Succès",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0c463871-8a87-4afe-972a-90d9d749d097",
+  "meta": {
+    "instanceId": "15dfa0bf5ad07176fa4d27aa9de6512c4d8b2a2c60e0f1eeb8bce41e1eaf8e34"
+  },
+  "id": "PkVZup6lDfLOU0lG",
+  "tags": []
+}

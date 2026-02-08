@@ -1,0 +1,311 @@
+{
+  "name": "Prévision taux de participation scouts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months"
+            }
+          ]
+        }
+      },
+      "name": "Cron — 1er du mois 07h00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1808,
+        -192
+      ],
+      "id": "a17a24af-56bd-4674-b868-58c0c0a6266a",
+      "notes": "Génère les prévisions du mois suivant le 1er de chaque mois."
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1lPBqWYYAOPw06l_MKVBOztUkbMnl2fy37aktL-1WtcU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 673227435,
+          "mode": "list",
+          "cachedResultName": "Historique_participation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lPBqWYYAOPw06l_MKVBOztUkbMnl2fy37aktL-1WtcU/edit#gid=673227435"
+        },
+        "options": {}
+      },
+      "name": "Sheets — Lire historique participation",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1616,
+        -176
+      ],
+      "id": "16ed7435-b975-4f62-89a8-f23b2a414e84",
+      "notes": "Onglet 'Historique_participation' — colonnes : date, nom_activite, type_activite (randonnee/camp/reunion/sortie), unite, inscrits, presents, taux_reel"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1lPBqWYYAOPw06l_MKVBOztUkbMnl2fy37aktL-1WtcU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 321789801,
+          "mode": "list",
+          "cachedResultName": "Activités",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lPBqWYYAOPw06l_MKVBOztUkbMnl2fy37aktL-1WtcU/edit#gid=321789801"
+        },
+        "options": {}
+      },
+      "name": "Sheets — Activités mois suivant",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -1344,
+        -192
+      ],
+      "id": "75f296f0-f406-4e9a-ae9f-f9a0940a37e8",
+      "notes": "Onglet 'Activités' — colonnes : date_activite, mois_activite (yyyy-MM), nom_activite, type_activite, unite, capacite_max"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// MODÈLE PRÉVISION PONDÉRÉ — WF-2.5 (version robuste)\n// Auto-détection des noms de colonnes Google Sheets\n// ============================================================\n\nconst historiqueRaw = $('Sheets — Lire historique participation').all().map(i => i.json);\nconst activitesRaw  = $input.all().map(i => i.json);\n\nif (!activitesRaw.length) return [];\n\n// ── Auto-détection de colonne (insensible à la casse, accents, espaces) ──────\nfunction findKey(obj, candidates) {\n  const keys = Object.keys(obj);\n  for (const c of candidates) {\n    const cNorm = c.toLowerCase().replace(/[\\s_\\-éèêàùû]/g, '');\n    const found = keys.find(k => k.toLowerCase().replace(/[\\s_\\-éèêàùû]/g, '') === cNorm);\n    if (found !== undefined) return found;\n  }\n  // Fallback : partial match\n  for (const c of candidates) {\n    const cNorm = c.toLowerCase().replace(/[\\s_\\-éèêàùû]/g, '');\n    const found = keys.find(k => k.toLowerCase().replace(/[\\s_\\-éèêàùû]/g, '').includes(cNorm.slice(0,5)));\n    if (found !== undefined) return found;\n  }\n  return null;\n}\n\nfunction get(obj, candidates) {\n  const key = findKey(obj, candidates);\n  return key ? obj[key] : undefined;\n}\n\n// Nommer les champs historique\nconst historique = historiqueRaw.map(h => ({\n  date:          get(h, ['date','date_activite','Date','Date activité']),\n  type_activite: get(h, ['type_activite','type','Type','type activite','TypeActivite']),\n  unite:         get(h, ['unite','unité','Unite','Unité','unit']),\n  taux_reel:     get(h, ['taux_reel','taux_réel','taux','TauxReel','Taux réel','Taux']),\n  nom_activite:  get(h, ['nom_activite','nom','Nom','nom activite','NomActivite']),\n  inscrits:      get(h, ['inscrits','Inscrits','nb_inscrits']),\n  presents:      get(h, ['presents','présents','Présents','nb_presents']),\n}));\n\n// Nommer les champs activités\nconst activites = activitesRaw.map(a => ({\n  date_activite:  get(a, ['date_activite','date','Date','Date activité']),\n  mois_activite:  get(a, ['mois_activite','mois','Mois','mois activite']),\n  nom_activite:   get(a, ['nom_activite','nom','Nom','nom activite','Activité','activite']),\n  type_activite:  get(a, ['type_activite','type','Type','type activite']),\n  unite:          get(a, ['unite','unité','Unite','Unité']),\n  capacite_max:   get(a, ['capacite_max','capacité_max','capacite','capacité','Capacité','Capacite','capacite max','nb_max','max']),\n  _raw:           a\n}));\n\n// ── Saison ────────────────────────────────────────────────────────────────────\nconst moisCourant = new Date().getMonth() + 1;\nfunction getSaison(m) {\n  if ([12,1,2].includes(m)) return 'hiver';\n  if ([3,4,5].includes(m))  return 'printemps';\n  if ([6,7,8].includes(m))  return 'ete';\n  return 'automne';\n}\nconst saisonCourante = getSaison(moisCourant);\n\nfunction getSaisonFromDate(dateStr) {\n  if (!dateStr) return 'inconnu';\n  const d = new Date(dateStr);\n  if (isNaN(d)) return 'inconnu';\n  return getSaison(d.getMonth() + 1);\n}\n\n// ── Moyenne pondérée par type ─────────────────────────────────────────────────\nfunction moyennePonderee(type, unite) {\n  const toNum = v => { const n = parseFloat(String(v).replace(',','.')); return isNaN(n) ? null : n; };\n\n  // Tenter de calculer taux depuis inscrits/presents si taux_reel absent\n  const lignesType = historique.filter(h => {\n    if (!h.type_activite) return false;\n    const ht = h.type_activite.toLowerCase().trim();\n    const at = (type || '').toLowerCase().trim();\n    return ht === at || ht.includes(at) || at.includes(ht);\n  });\n\n  const avecTaux = lignesType.map(h => {\n    let taux = toNum(h.taux_reel);\n    // Calculer depuis inscrits/presents si taux absent\n    if (taux === null) {\n      const ins = toNum(h.inscrits);\n      const pre = toNum(h.presents);\n      if (ins && pre && ins > 0) taux = Math.round((pre / ins) * 100);\n    }\n    // Taux en décimal (0-1) → convertir\n    if (taux !== null && taux <= 1) taux = Math.round(taux * 100);\n    return { ...h, tauxNum: taux };\n  }).filter(h => h.tauxNum !== null && h.tauxNum >= 0 && h.tauxNum <= 100);\n\n  if (!avecTaux.length) {\n    // Aucune donnée pour ce type → fallback global\n    const global = historique.map(h => {\n      let t = toNum(h.taux_reel);\n      if (t === null) {\n        const ins = toNum(h.inscrits); const pre = toNum(h.presents);\n        if (ins && pre && ins > 0) t = Math.round((pre / ins) * 100);\n      }\n      if (t !== null && t <= 1) t = Math.round(t * 100);\n      return t;\n    }).filter(t => t !== null && t >= 0 && t <= 100);\n\n    if (!global.length) return 72; // valeur par défaut réaliste\n    return Math.round(global.reduce((s,v) => s+v, 0) / global.length);\n  }\n\n  let sommePoids = 0, sommeVal = 0;\n  avecTaux.forEach(h => {\n    const saison = getSaisonFromDate(h.date);\n    const poids  = saison === saisonCourante ? 2 : 1;\n    sommeVal   += h.tauxNum * poids;\n    sommePoids += poids;\n  });\n  return Math.round(sommeVal / sommePoids);\n}\n\n// ── Tendance ─────────────────────────────────────────────────────────────────\nfunction calculTendance(type) {\n  const now = new Date();\n  const m3  = new Date(now); m3.setMonth(now.getMonth() - 3);\n  const m6  = new Date(now); m6.setMonth(now.getMonth() - 6);\n  const toNum = v => { const n = parseFloat(String(v||'').replace(',','.')); return isNaN(n) ? null : n; };\n\n  const lignesType = historique.filter(h => {\n    if (!h.type_activite || !h.date) return false;\n    const ht = h.type_activite.toLowerCase().trim();\n    const at = (type||'').toLowerCase().trim();\n    return ht === at || ht.includes(at) || at.includes(ht);\n  });\n\n  const withDate = lignesType.map(h => {\n    let t = toNum(h.taux_reel);\n    if (t === null) {\n      const ins = toNum(h.inscrits); const pre = toNum(h.presents);\n      if (ins && pre && ins > 0) t = Math.round((pre / ins) * 100);\n    }\n    if (t !== null && t <= 1) t = Math.round(t * 100);\n    return { date: new Date(h.date), taux: t };\n  }).filter(h => !isNaN(h.date) && h.taux !== null);\n\n  const recents = withDate.filter(h => h.date >= m3);\n  const anciens  = withDate.filter(h => h.date >= m6 && h.date < m3);\n\n  if (!recents.length || !anciens.length) return { label: 'stable', ajustement: 0 };\n\n  const moyR = recents.reduce((s,h) => s + h.taux, 0) / recents.length;\n  const moyA = anciens.reduce((s,h) => s + h.taux, 0) / anciens.length;\n  const diff = moyR - moyA;\n  if (diff > 3)  return { label: 'hausse',  ajustement: +3 };\n  if (diff < -3) return { label: 'baisse',  ajustement: -3 };\n  return               { label: 'stable', ajustement:  0 };\n}\n\n// ── Prévision par activité ────────────────────────────────────────────────────\nconst moisSuivant = new Date();\nmoisSuivant.setMonth(moisSuivant.getMonth() + 1);\nconst periodeLabel = moisSuivant.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });\n\nreturn activites.map(act => {\n  const type     = (act.type_activite || '').trim();\n  const unite    = (act.unite || '').trim();\n  const capacite = parseFloat(String(act.capacite_max || '0').replace(',','.')) || 0;\n\n  const base     = moyennePonderee(type, unite);\n  const tendance = calculTendance(type);\n  const taux     = Math.min(100, Math.max(0, Math.round(base + tendance.ajustement)));\n  const presence = capacite > 0 ? Math.round((taux / 100) * capacite) : 0;\n  const alerte   = taux < 60;\n\n  return {\n    json: {\n      periode:         periodeLabel,\n      nom_activite:    act.nom_activite    || act._raw[Object.keys(act._raw)[1]] || 'N/A',\n      date_activite:   act.date_activite   || '',\n      mois_activite:   act.mois_activite   || '',\n      type_activite:   type                || '',\n      unite:           unite               || '',\n      capacite_max:    capacite,\n      taux_prevu:      taux,\n      presence_prevue: presence,\n      tendance:        tendance.label,\n      alerte,\n      taux_reel:       '',\n      ecart:           ''\n    }\n  };\n});"
+      },
+      "name": "Function — Modèle prévision pondéré",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1168,
+        -176
+      ],
+      "id": "198ae4f6-8e9a-4b37-9537-f471ed7a2825",
+      "notes": "Calcule taux_prevu par activité : moyenne historique pondérée par type (saison courante ×2) + ajustement tendance ±3%."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.taux_prevu}}",
+              "operation": "smallerEqual",
+              "value2": 60
+            }
+          ]
+        }
+      },
+      "name": "IF — Taux prévu < 60% ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        -160
+      ],
+      "id": "a339bf9e-175f-435f-ba5c-5147de40800e"
+    },
+    {
+      "parameters": {
+        "sendTo": "=amyyne.amyry@gmail.com",
+        "subject": "=[ALERTE Scouts] Faible participation prévue — {{$json.nom_activite}} ({{$json.taux_prevu}}%)",
+        "message": "=<h3 style='color:#c0392b;'>Alerte participation faible</h3>\n<p>L'activité <strong>{{$json.nom_activite}}</strong> du <strong>{{$json.date_activite}}</strong> a une participation prévue de seulement <strong style='color:#c0392b;'>{{$json.taux_prevu}}%</strong> ({{$json.presence_prevue}}/{{$json.capacite_max}} scouts).</p>\n<p><strong>Type :</strong> {{$json.type_activite}} — <strong>Tendance :</strong> {{$json.tendance}}</p>\n<p>Actions suggérées : relancer les parents par WF-2.1, adapter l'activité ou renforcer la communication.</p>",
+        "options": {}
+      },
+      "name": "Gmail — Alerte faible participation",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        -208
+      ],
+      "id": "c561b4eb-eed0-4bb5-9601-7fff11036dbd",
+      "webhookId": "6ef19c97-bbcf-40ef-86e0-cec0d1e07a1c"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1lPBqWYYAOPw06l_MKVBOztUkbMnl2fy37aktL-1WtcU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Prévisions",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "periode": "={{$json.periode}}",
+            "nom_activite": "={{$json.nom_activite}}",
+            "date_activite": "={{$json.date_activite}}",
+            "type_activite": "={{$json.type_activite}}",
+            "unite": "={{$json.unite}}",
+            "capacite_max": "={{$json.capacite_max}}",
+            "taux_prevu": "={{$json.taux_prevu}}",
+            "presence_prevue": "={{$json.presence_prevue}}",
+            "tendance": "={{$json.tendance}}",
+            "alerte": "={{$json.alerte ? 'OUI' : 'NON'}}",
+            "taux_reel": "",
+            "ecart": ""
+          }
+        },
+        "options": {}
+      },
+      "name": "Sheets — Enregistre prévisions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -64,
+        16
+      ],
+      "id": "5aef1a95-a97c-4056-b002-0d4f4ad5a376",
+      "notes": "Les colonnes taux_reel et ecart seront remplies après l'activité pour mesurer la précision du modèle (Ind.2)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// GÉNÈRE RAPPORT HTML MENSUEL — WF-2.5\n// ============================================================\nconst items = $input.all().map(i => i.json);\nif (!items.length) return [{ json: { html: '<p>Aucune prévision disponible.</p>', mois: '', taux_moyen: 0, alertes: 0 } }];\n\n// Sheets retourne alerte comme string \"OUI\"/\"NON\" — convertir en booléen\nconst parseAlerte = v => {\n  if (typeof v === 'boolean') return v;\n  if (typeof v === 'string') return v.trim().toUpperCase() === 'OUI';\n  return !!v;\n};\n\nconst parseTaux = v => {\n  const n = parseFloat(String(v ?? '').replace(',', '.'));\n  return isNaN(n) ? null : n;\n};\n\nconst parsed = items.map(i => ({\n  ...i,\n  taux_prevu:  parseTaux(i.taux_prevu),\n  alerte:      parseAlerte(i.alerte),\n  capacite_max: parseFloat(i.capacite_max) || 0,\n}));\n\nconst valid     = parsed.filter(i => i.taux_prevu !== null);\nconst alertes   = parsed.filter(i => i.alerte).length;\nconst tauxMoyen = valid.length\n  ? Math.round(valid.reduce((s,i) => s + i.taux_prevu, 0) / valid.length)\n  : 0;\nconst mois = items[0]?.periode || '';\n\nconst clr = t => t >= 80 ? '#1a7340' : t >= 60 ? '#e67e22' : '#c0392b';\nconst bar = t => {\n  const pct = Math.min(t, 100);\n  return `<div style=\"background:#eee;border-radius:4px;height:8px;width:100%;\">\n    <div style=\"background:${clr(t)};height:8px;border-radius:4px;width:${pct}%;\"></div></div>`;\n};\nconst safe = v => (v === undefined || v === null || v === '') ? '—' : v;\n\nconst lignes = parsed.map(i => {\n  const t   = i.taux_prevu;\n  const bg  = i.alerte ? '#fdecea' : '#f0faf4';\n  const tc  = t !== null ? clr(t) : '#888';\n  return `<tr style=\"background:${bg};\">\n    <td style=\"padding:8px;\">${safe(i.date_activite)}</td>\n    <td style=\"padding:8px;font-weight:500;\">${safe(i.nom_activite)}</td>\n    <td style=\"padding:8px;\">${safe(i.type_activite)}</td>\n    <td style=\"padding:8px;\">${safe(i.unite)}</td>\n    <td style=\"padding:8px;text-align:right;\">${safe(i.capacite_max || '')}</td>\n    <td style=\"padding:8px;text-align:right;\">\n      <strong style=\"color:${tc};\">${t !== null ? t+'%' : '—'}</strong><br>\n      ${t !== null ? bar(t) : ''}</td>\n    <td style=\"padding:8px;text-align:right;\">${safe(i.presence_prevue)}</td>\n    <td style=\"padding:8px;\">${safe(i.tendance)}</td>\n    <td style=\"padding:8px;text-align:center;font-weight:600;color:${i.alerte ? '#c0392b' : '#1a7340'};\">\n      ${i.alerte ? '⚠ ALERTE' : '✓ OK'}</td>\n  </tr>`;\n}).join('');\n\nconst html = `\n<div style=\"font-family:Arial,sans-serif;max-width:800px;\">\n  <div style=\"background:#2c5f2e;color:white;padding:16px 20px;border-radius:8px 8px 0 0;\">\n    <h2 style=\"margin:0;font-size:18px;\">Prévisions participation — ${mois}</h2>\n    <p style=\"margin:4px 0 0;font-size:13px;opacity:0.85;\">\n      ${parsed.length} activité(s) · Taux moyen prévu : ${tauxMoyen}% · ${alertes} alerte(s)\n    </p>\n  </div>\n  <div style=\"display:flex;gap:12px;padding:16px;background:#f9f9f9;\">\n    <div style=\"flex:1;text-align:center;background:white;padding:12px;border-radius:8px;\">\n      <div style=\"font-size:11px;color:#888;\">Activités planifiées</div>\n      <div style=\"font-size:24px;font-weight:600;color:#2c5f2e;\">${parsed.length}</div>\n    </div>\n    <div style=\"flex:1;text-align:center;background:white;padding:12px;border-radius:8px;\">\n      <div style=\"font-size:11px;color:#888;\">Taux moyen prévu</div>\n      <div style=\"font-size:24px;font-weight:600;color:${clr(tauxMoyen)};\">${tauxMoyen}%</div>\n    </div>\n    <div style=\"flex:1;text-align:center;background:white;padding:12px;border-radius:8px;\">\n      <div style=\"font-size:11px;color:#888;\">Alertes (&lt; 60%)</div>\n      <div style=\"font-size:24px;font-weight:600;color:${alertes > 0 ? '#c0392b' : '#1a7340'};\">${alertes}</div>\n    </div>\n  </div>\n  <table border=\"1\" cellpadding=\"0\" cellspacing=\"0\"\n    style=\"border-collapse:collapse;width:100%;font-size:13px;\">\n    <thead>\n      <tr style=\"background:#2c5f2e;color:white;\">\n        <th style=\"padding:8px;\">Date</th><th style=\"padding:8px;\">Activité</th>\n        <th style=\"padding:8px;\">Type</th><th style=\"padding:8px;\">Unité</th>\n        <th style=\"padding:8px;\">Capacité</th><th style=\"padding:8px;\">Taux prévu</th>\n        <th style=\"padding:8px;\">Présences</th><th style=\"padding:8px;\">Tendance</th>\n        <th style=\"padding:8px;\">Statut</th>\n      </tr>\n    </thead>\n    <tbody>${lignes}</tbody>\n  </table>\n  <p style=\"font-size:12px;color:#666;padding:8px;\">\n    Modèle : moyenne historique pondérée par type · saison courante ×2 · ajustement tendance ±3%.<br>\n    Remplissez <em>taux_reel</em> après chaque activité pour améliorer le modèle au fil du temps.\n  </p>\n</div>`;\n\nreturn [{ json: { html, mois, taux_moyen: tauxMoyen, alertes } }];"
+      },
+      "name": "Function — Génère rapport HTML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        128
+      ],
+      "id": "8e37ed42-d3f9-4fd4-9d23-ab85813a6edc",
+      "notes": "Corrigé : alerte parsée depuis string Sheets \"OUI\"/\"NON\" → booléen avant affichage."
+    },
+    {
+      "parameters": {
+        "sendTo": "=amyyne.amyry@gmail.com",
+        "subject": "=[Scouts] Prévisions participation — {{$json.mois}} (moy. {{$json.taux_moyen}}%{{$json.alertes > 0 ? ' — ' + $json.alertes + ' alerte(s)' : ''}})",
+        "message": "={{$json.html}}",
+        "options": {}
+      },
+      "name": "Gmail — Rapport prévisions mensuel",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        224,
+        432
+      ],
+      "id": "73a9bf06-3f6b-4eb8-99d8-69756872ac7c",
+      "webhookId": "1692204f-2973-490b-8dda-e63180371f09"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Cron — 1er du mois 07h00": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Lire historique participation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets — Lire historique participation": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Activités mois suivant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets — Activités mois suivant": {
+      "main": [
+        [
+          {
+            "node": "Function — Modèle prévision pondéré",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Modèle prévision pondéré": {
+      "main": [
+        [
+          {
+            "node": "IF — Taux prévu < 60% ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF — Taux prévu < 60% ?": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Alerte faible participation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Sheets — Enregistre prévisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail — Alerte faible participation": {
+      "main": [
+        [
+          {
+            "node": "Sheets — Enregistre prévisions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets — Enregistre prévisions": {
+      "main": [
+        [
+          {
+            "node": "Function — Génère rapport HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function — Génère rapport HTML": {
+      "main": [
+        [
+          {
+            "node": "Gmail — Rapport prévisions mensuel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b45d4b58-880f-4158-8ce2-3519bf2378e9",
+  "meta": {
+    "instanceId": "15dfa0bf5ad07176fa4d27aa9de6512c4d8b2a2c60e0f1eeb8bce41e1eaf8e34"
+  },
+  "id": "5K4MPY8rcIJlxW9p",
+  "tags": []
+}
