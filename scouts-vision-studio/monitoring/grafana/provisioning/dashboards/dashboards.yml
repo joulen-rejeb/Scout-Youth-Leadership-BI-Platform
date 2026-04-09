@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: Scouts S13
+    folder: S13 MLOps
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

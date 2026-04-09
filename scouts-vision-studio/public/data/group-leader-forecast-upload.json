@@ -1,0 +1,14 @@
+{
+  "name": "Added member data",
+  "description": "Data used only by the Group Leader Upload Data button.",
+  "rows": [
+    {
+      "season": "2026-2027",
+      "members": 118
+    },
+    {
+      "season": "2027-2028",
+      "members": 132
+    }
+  ]
+}

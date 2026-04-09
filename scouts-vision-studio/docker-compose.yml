@@ -1,0 +1,75 @@
+# MLOps + monitoring S13 : API, MLflow, Prometheus, Grafana.
+# Démarrage : docker compose up --build
+#
+# - API ML :     http://localhost:5050/docs   — métriques : http://localhost:5050/metrics
+# - MLflow UI :  http://localhost:5001
+# - Prometheus: http://localhost:9090
+# - Grafana:     http://localhost:3000  (admin / admin par défaut)
+
+services:
+  ml-api:
+    build: .
+    ports:
+      - "5050:5050"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    environment:
+      PYTHONPATH: /workspace
+      SCOUT_ML_RELOAD: "0"
+    command: ["python", "-m", "uvicorn", "ml_backend.main:app", "--host", "0.0.0.0", "--port", "5050"]
+    networks: [scout-net]
+
+  mlflow-ui:
+    image: python:3.11-slim
+    ports:
+      - "5001:5000"
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    command: >
+      bash -c "pip install --no-cache-dir mlflow==2.16.2 &&
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri file:///workspace/mlops/mlruns
+      --default-artifact-root file:///workspace/mlops/mlruns"
+    networks: [scout-net]
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    depends_on:
+      - ml-api
+    networks: [scout-net]
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_DEFAULT_THEME: dark
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks: [scout-net]
+
+networks:
+  scout-net:
+    driver: bridge
+
+volumes:
+  grafana_data:

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Q&amp;A Assistance — Scouting helper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+  <div class="page-bg">
+    <div class="bg-pattern"></div>
+  </div>
+
+  <div class="page-wrapper">
+
+    <header class="site-header">
+      <div class="header-inner">
+        <div class="logo-area">
+          <div class="logo-icon">⚜️</div>
+          <div>
+            <h1 class="site-title">Q&amp;A ASSISTANCE</h1>
+            <p class="site-tagline">Simple answers about scouting</p>
+          </div>
+        </div>
+        <div class="header-badge">
+          <span class="dot-live"></span> Online
+        </div>
+      </div>
+    </header>
+
+    <main class="main-layout">
+
+      <aside class="sidebar">
+        <div class="sidebar-card">
+          <div class="sidebar-icon">🏕️</div>
+          <h2 class="sidebar-title">About</h2>
+          <p class="sidebar-text">Q&amp;A Assistance answers everyday questions about scouting: games outside, values, trips, camps, and how groups work.</p>
+        </div>
+
+        <div class="sidebar-card topics-card">
+          <h3 class="topics-label">Topics</h3>
+          <ul class="topics-list">
+            <li>⚜️ Story &amp; values</li>
+            <li>🌿 Outdoor fun</li>
+            <li>🪢 Practical skills</li>
+            <li>🎖️ Ranks &amp; badges</li>
+            <li>🌍 Big events</li>
+            <li>👥 How groups work</li>
+            <li>🎒 Gear &amp; camps</li>
+          </ul>
+        </div>
+
+        <div class="sidebar-card tip-card">
+          <p class="tip-text">💡 <strong>Tip:</strong> Tap a quick question or type your own.</p>
+        </div>
+      </aside>
+
+      <section class="chat-panel">
+
+        <div class="chat-topbar">
+          <div class="bot-info">
+            <div class="bot-avatar">⚜️</div>
+            <div>
+              <span class="bot-name">Q&amp;A Assistance</span>
+              <span class="bot-status"><span class="dot-live small"></span> Here to help</span>
+            </div>
+          </div>
+          <button class="clear-btn" id="clearBtn" title="Clear chat">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 .49-3.51"></path></svg>
+          </button>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+          <div class="date-divider"><span>Today</span></div>
+
+          <div class="msg-row bot-row" id="welcomeMsg">
+            <div class="msg-avatar-wrap">
+              <div class="msg-avatar bot-av">⚜️</div>
+            </div>
+            <div class="msg-content">
+              <span class="msg-sender">Q&amp;A Assistance</span>
+              <div class="bubble bot-bubble">
+                Hi there! 👋 I’m <strong>Q&amp;A Assistance</strong>, your scouting helper. Ask me anything about scouts, camps, or activities — I’m glad to help.
+              </div>
+              <span class="msg-time" id="welcomeTime"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="quick-section">
+          <p class="quick-label">Quick questions</p>
+          <div class="quick-grid" id="quickGrid">
+            {% for q in questions %}
+            <button type="button" class="q-chip" data-q="{{ q.text | e }}">
+              {{ q.emoji }} {{ q.text }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="input-bar">
+          <div class="input-wrap">
+            <input
+              type="text"
+              id="msgInput"
+              class="msg-input"
+              placeholder="Ask about scouts or camping..."
+              autocomplete="off"
+            />
+            <button class="send-btn" id="sendBtn" aria-label="Send">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M2 12L22 2L14 22L11 13L2 12Z"/></svg>
+            </button>
+          </div>
+          <p class="input-hint">Q&amp;A Assistance only answers scouting-related questions.</p>
+        </div>
+
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>⚜️ Q&amp;A Assistance — Scouting topics only</p>
+    </footer>
+
+  </div>
+
+  <script src="{{ url_for('static', filename='js/chat.js') }}"></script>
+  <script>
+    document.querySelectorAll('.q-chip').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var text = btn.getAttribute('data-q');
+        if (text && typeof askQuestion === 'function') askQuestion(text);
+      });
+    });
+  </script>
+</body>
+</html>

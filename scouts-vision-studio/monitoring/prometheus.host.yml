@@ -1,0 +1,18 @@
+# Prometheus sur l’hôte : API ML déjà lancée avec « npm run ml-api » (127.0.0.1:5050).
+# Exemple Docker (voir README.txt racine du dépôt) : monter ce fichier comme prometheus.yml.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: scout_ml_api_host
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - host.docker.internal:5050
+        labels:
+          service: scouts-vision-ml-host

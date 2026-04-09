@@ -1,0 +1,11 @@
+{
+  "run_name": "run_b_regularized",
+  "run_id": "f892b8905a944bc6bbd55a71a0dab0fc",
+  "metrics": {
+    "test_mae": 0.11592429618797308,
+    "test_rmse": 0.1448024634128238,
+    "test_r2": 0.6792432888578823
+  },
+  "registry": "scouts_budget_rf_pipeline",
+  "model_version": 2
+}

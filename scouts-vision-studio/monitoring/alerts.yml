@@ -1,0 +1,67 @@
+# Règles d’alerte S13 (seuils simples — observables dans Prometheus /alerts et Grafana).
+# Les logs détaillés (pourquoi) sont émis côté API (logger scout.monitoring).
+
+groups:
+  - name: scout_s13_predict
+    rules:
+      - alert: ScoutHighPredictLatencyP95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (task, le) (rate(scout_predict_latency_seconds_bucket[5m]))
+          ) > 2
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latence /predict élevée (p95 > 2s)"
+          description: "Vérifier charge, CPU ou SCOUT_SIM_LATENCY_MS."
+
+      - alert: ScoutPredictErrorBurst
+        expr: sum(rate(scout_api_predict_errors_total[5m])) > 0.5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pic d’erreurs sur /predict"
+          description: "Voir logs API et métrique scout_api_predict_errors_total."
+
+      - alert: ScoutDriftConfidence
+        expr: increase(scout_drift_detection_events_total{type="confidence"}[10m]) > 0
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Dérive / baisse de confiance détectée"
+          description: "Comparer scout_model_max_confidence_percent à la baseline."
+
+      - alert: ScoutAccuracyProxyDegraded
+        expr: scout_model_accuracy_ratio_vs_baseline < 0.95
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Proxy de précision sous 95 % de la baseline roulante"
+          description: "Envisager ré-entraînement (voir logs retraining_trigger)."
+
+      - alert: ScoutDataQualityMissing
+        expr: max(scout_data_missing_features_ratio) > 0.25
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Trop de features manquantes dans les payloads"
+          description: "Vérifier les clients de /predict."
+
+  - name: scout_s13_http
+    rules:
+      - alert: ScoutHttp5xxRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+          / clamp_min(sum(rate(http_requests_total[5m])), 0.001)
+          > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Taux HTTP 5xx élevé sur l’API"
+          description: "Inclut toutes les routes instrumentées."

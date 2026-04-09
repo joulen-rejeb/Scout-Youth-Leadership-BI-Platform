@@ -1,0 +1,13 @@
+# Chemin relatif au répertoire d'installation Grafana (--homepath = monitoring/grafana-win).
+# D'où : ../grafana/dashboards → monitoring/grafana/dashboards (fichiers JSON du projet).
+
+apiVersion: 1
+
+providers:
+  - name: Scouts S13
+    folder: S13 MLOps
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: ../grafana/dashboards

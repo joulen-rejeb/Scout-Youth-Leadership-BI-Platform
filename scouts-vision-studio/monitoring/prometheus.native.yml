@@ -1,0 +1,24 @@
+# Prometheus installé EN NATIF (sans Docker) sur la même machine que l’API.
+# L’API doit tourner : npm run ml-api → http://127.0.0.1:5050/metrics
+#
+# Lancement (dans ce dossier « monitoring ») :
+#   prometheus.exe --config.file=prometheus.native.yml
+# Ou sous Linux/macOS : ./prometheus --config.file=prometheus.native.yml
+#
+# Les chemins dans rule_files sont relatifs à l’emplacement de CE fichier.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - alerts.yml
+
+scrape_configs:
+  - job_name: scout_ml_api
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 127.0.0.1:5050
+        labels:
+          service: scouts-vision-ml

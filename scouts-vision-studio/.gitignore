@@ -1,0 +1,47 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+
+# Binaire Prometheus téléchargé en local (npm run prometheus:download-win)
+monitoring/prometheus.exe
+
+# Grafana OSS extrait localement + données (npm run grafana:download-win / npm run grafana)
+monitoring/grafana-win/
+monitoring/grafana-data/
+
+# MLflow data under mlops (keep .gitkeep only)
+mlops/mlruns/*
+!mlops/mlruns/.gitkeep
+mlruns/
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ScoutBuddy / Q&A local secrets
+scoutbuddy/.env

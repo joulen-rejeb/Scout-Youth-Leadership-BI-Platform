@@ -1,0 +1,127 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-charcoal: var(--charcoal);
+  --color-rose-mist: var(--rose-mist);
+  --color-stone-warm: var(--stone-warm);
+  --color-scout-red: var(--scout-red);
+  --color-surface: var(--surface);
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.375rem;
+  /* Brand palette */
+  --background: oklch(0.956 0.018 18);           /* soft rose-red tint */
+  --surface: oklch(0.985 0.005 350);
+  --foreground: oklch(0.225 0.012 350);          /* #2a2629 */
+  --charcoal: oklch(0.225 0.012 350);
+  --rose-mist: oklch(0.79 0.075 17);             /* #efacb2 */
+  --stone-warm: oklch(0.55 0.012 20);            /* #898082 */
+  --scout-red: oklch(0.51 0.22 27);              /* #ca0314 */
+
+  --card: oklch(0.99 0.004 350);
+  --card-foreground: var(--foreground);
+  --popover: oklch(0.99 0.004 350);
+  --popover-foreground: var(--foreground);
+  --primary: var(--scout-red);
+  --primary-foreground: oklch(0.99 0.004 350);
+  --secondary: oklch(0.94 0.018 18);
+  --secondary-foreground: var(--foreground);
+  --muted: oklch(0.94 0.014 18);
+  --muted-foreground: var(--stone-warm);
+  --accent: oklch(0.94 0.022 18);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--scout-red);
+  --destructive-foreground: oklch(0.99 0.004 350);
+  --border: oklch(0.88 0.01 350);
+  --input: oklch(0.88 0.01 350);
+  --ring: var(--charcoal);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--scout-red) 18%, white);
+    color: var(--foreground);
+  }
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+    font-weight: 500;
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--font-display); }
+  .mesh-glow {
+    background:
+      radial-gradient(60% 50% at 80% 20%, color-mix(in oklab, var(--rose-mist) 55%, transparent) 0%, transparent 60%),
+      radial-gradient(50% 40% at 10% 80%, color-mix(in oklab, var(--stone-warm) 25%, transparent) 0%, transparent 65%),
+      radial-gradient(40% 35% at 60% 90%, color-mix(in oklab, var(--rose-mist) 35%, transparent) 0%, transparent 70%);
+    filter: blur(40px);
+  }
+  .hero-mask {
+    -webkit-mask-image: radial-gradient(ellipse 75% 80% at 55% 50%, #000 40%, transparent 78%);
+            mask-image: radial-gradient(ellipse 75% 80% at 55% 50%, #000 40%, transparent 78%);
+  }
+  .glass-card {
+    background: color-mix(in oklab, white 70%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid color-mix(in oklab, var(--charcoal) 8%, transparent);
+  }
+  .float-slow { animation: floatY 7s ease-in-out infinite; }
+  .float-slower { animation: floatY 10s ease-in-out infinite; }
+  @keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  .fade-up {
+    animation: fadeUp 0.9s cubic-bezier(.2,.7,.2,1) both;
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

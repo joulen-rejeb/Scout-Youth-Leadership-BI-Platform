@@ -1,0 +1,31 @@
+{
+  "experiment": "scouts_training_pipeline",
+  "registry_name": "scouts_budget_rf_pipeline",
+  "best_run_id": "e71dd12aef5348dd992120b1867ea482",
+  "best_r2": 0.7082254757115829,
+  "runs_compared": [
+    {
+      "run_name": "run_a_deep_forest",
+      "run_id": "e71dd12aef5348dd992120b1867ea482",
+      "metrics": {
+        "test_mae": 0.11051205033261148,
+        "test_rmse": 0.13729289646121431,
+        "test_r2": 0.7082254757115829
+      },
+      "registry": "scouts_budget_rf_pipeline",
+      "model_version": 1
+    },
+    {
+      "run_name": "run_b_regularized",
+      "run_id": "f892b8905a944bc6bbd55a71a0dab0fc",
+      "metrics": {
+        "test_mae": 0.11592429618797308,
+        "test_rmse": 0.1448024634128238,
+        "test_r2": 0.6792432888578823
+      },
+      "registry": "scouts_budget_rf_pipeline",
+      "model_version": 2
+    }
+  ],
+  "production_pkl": "C:\\Users\\ASUS\\Desktop\\PI\\ScoutsWebsite\\scouts-vision-studio\\budget_rf.pkl"
+}
